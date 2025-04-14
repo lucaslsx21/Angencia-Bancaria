@@ -1,24 +1,26 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Layout from "./components/Layout"; // Adjust the path as needed
-import { ClientesList } from "./pages/ClienteListagem"; // Adjust the path as needed
-import { ClienteDetails } from "./pages/ClienteDetalhes"; // Adjust the path as needed
+import { Outlet, Link } from 'react-router-dom';
 
-const queryClient = new QueryClient();
-
-function App() {
+const App = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <Router>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<ClientesList />} />
-            <Route path="/cliente/:id" element={<ClienteDetails />} />
-          </Routes>
-        </Layout>
-      </Router>
-    </QueryClientProvider>
-  )
-}
+    <div className="min-h-screen flex flex-col">
+      <header className="bg-blue-700 text-white px-4 py-3 shadow-md">
+        <div className="max-w-7xl mx-auto flex justify-between items-center flex-wrap gap-y-2">
+          <Link to="/" className="text-2xl font-bold whitespace-nowrap">Banco XYZ</Link>
+          <nav className="w-full sm:w-auto flex justify-center sm:justify-end gap-4">
+            <Link to="/" className="hover:underline">Clientes</Link>
+          </nav>
+        </div>
+      </header>
+
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
+        <Outlet />
+      </main>
+
+      <footer className="bg-gray-100 text-center p-4 text-sm text-gray-600">
+        © {new Date().getFullYear()} Banco XYZ. Todos os direitos reservados.
+      </footer>
+    </div>
+  );
+};
 
 export default App;
