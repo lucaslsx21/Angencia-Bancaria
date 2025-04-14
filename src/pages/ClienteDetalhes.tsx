@@ -1,161 +1,76 @@
-import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { getCliente, getContasCliente, getAgencia } from '../services/api';
-import { formatCurrency, formatCPFCNPJ } from '../lib/utils';
-import { formatWithOptions } from 'date-fns/fp';
-import { ptBR } from 'date-fns/locale';
+import { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { Cliente, Conta, Agencia } from '../types';
+import { getClientes, getContas, getAgencias } from '../services/api';
 
-export function ClienteDetails() {
-    const { id } = useParams<{ id: string }>();
+const ClienteDetalhes = () => {
+  const { id } = useParams();
+  const [cliente, setCliente] = useState<Cliente | null>(null);
+  const [contas, setContas] = useState<Conta[]>([]);
+  const [agencia, setAgencia] = useState<Agencia | null>(null);
 
-    const { data: cliente, isLoading: isLoadingCliente } = useQuery({
-        queryKey: ['cliente', id],
-        queryFn: () => getCliente(id!),
-    });
+  useEffect(() => {
+    async function fetchData() {
+      const [clientes, contas, agencias] = await Promise.all([
+        getClientes(),
+        getContas(),
+        getAgencias(),
+      ]);
 
-    const { data: contas, isLoading: isLoadingContas } = useQuery({
-        queryKey: ['contas', cliente?.cpfCnpj],
-        queryFn: () => getContasCliente(cliente!.cpfCnpj),
-        enabled: !!cliente,
-    });
-
-    const { data: agencia, isLoading: isLoadingAgencia } = useQuery({
-        queryKey: ['agencia', cliente?.codigoAgencia],
-        queryFn: () => getAgencia(cliente!.codigoAgencia),
-        enabled: !!cliente,
-    });
-
-    if (isLoadingCliente || isLoadingContas || isLoadingAgencia) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="text-gray-500">Carregando...</div>
-            </div>
-        );
+      const clienteSelecionado = clientes.find((c) => c.id === id);
+      if (clienteSelecionado) {
+        setCliente(clienteSelecionado);
+        setContas(contas.filter((c) => c.cpfCnpjCliente === clienteSelecionado.cpfCnpj));
+        setAgencia(agencias.find((a) => a.codigo === clienteSelecionado.codigoAgencia) || null);
+      }
     }
+    fetchData();
+  }, [id]);
 
-    if (!cliente) {
-        return (
-            <div className="text-center py-12">
-                <h2 className="text-2xl font-semibold text-gray-900">Cliente não encontrado</h2>
-            </div>
-        );
-    }
+  if (!cliente) return <div className="p-4">Carregando dados do cliente...</div>;
 
-    return (
-        <div className="space-y-8">
-            <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Detalhes do Cliente</h1>
-            </div>
+  return (
+    <div className="p-4 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Detalhes do Cliente</h1>
+      <p><strong>Nome:</strong> {cliente.nome}</p>
+      {cliente.nomeSocial && <p><strong>Nome Social:</strong> {cliente.nomeSocial}</p>}
+      <p><strong>CPF/CNPJ:</strong> {cliente.cpfCnpj}</p>
+      <p><strong>RG:</strong> {cliente.rg || 'Não informado'}</p>
+      <p><strong>Data de Nascimento:</strong> {cliente.dataNascimento.toLocaleDateString()}</p>
+      <p><strong>Email:</strong> {cliente.email}</p>
+      <p><strong>Endereço:</strong> {cliente.endereco}</p>
+      <p><strong>Renda Anual:</strong> R$ {cliente.rendaAnual.toLocaleString()}</p>
+      <p><strong>Patrimônio:</strong> R$ {cliente.patrimonio.toLocaleString()}</p>
+      <p><strong>Estado Civil:</strong> {cliente.estadoCivil}</p>
 
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-                <div className="px-6 py-5 border-b border-gray-200">
-                    <h2 className="text-lg font-medium text-gray-900">Informações Pessoais</h2>
-                </div>
-                <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <dt className="text-sm font-medium text-gray-500">Nome</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{cliente.nome}</dd>
-                    </div>
-                    {cliente.nomeSocial && (
-                        <div>
-                            <dt className="text-sm font-medium text-gray-500">Nome Social</dt>
-                            <dd className="mt-1 text-sm text-gray-900">{cliente.nomeSocial}</dd>
-                        </div>
-                    )}
-                    <div>
-                        <dt className="text-sm font-medium text-gray-500">CPF/CNPJ</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{formatCPFCNPJ(cliente.cpfCnpj)}</dd>
-                    </div>
-                    {cliente.rg && (
-                        <div>
-                            <dt className="text-sm font-medium text-gray-500">RG</dt>
-                            <dd className="mt-1 text-sm text-gray-900">{cliente.rg}</dd>
-                        </div>
-                    )}
-                    <div>
-                        <dt className="text-sm font-medium text-gray-500">Data de Nascimento</dt>
-                        <dd className="mt-1 text-sm text-gray-900">
-                            {formatWithOptions({ locale: ptBR })("dd 'de' MMMM 'de' yyyy")(new Date(cliente.dataNascimento))}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt className="text-sm font-medium text-gray-500">Estado Civil</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{cliente.estadoCivil}</dd>
-                    </div>
-                    <div>
-                        <dt className="text-sm font-medium text-gray-500">Email</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{cliente.email}</dd>
-                    </div>
-                    <div>
-                        <dt className="text-sm font-medium text-gray-500">Endereço</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{cliente.endereco}</dd>
-                    </div>
-                    <div>
-                        <dt className="text-sm font-medium text-gray-500">Renda Anual</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{formatCurrency(cliente.rendaAnual)}</dd>
-                    </div>
-                    <div>
-                        <dt className="text-sm font-medium text-gray-500">Patrimônio</dt>
-                        <dd className="mt-1 text-sm text-gray-900">{formatCurrency(cliente.patrimonio)}</dd>
-                    </div>
-                </div>
-            </div>
+      <h2 className="text-xl font-bold mt-6 mb-2">Contas Bancárias</h2>
+      {contas.length === 0 ? (
+        <p>Nenhuma conta bancária encontrada.</p>
+      ) : (
+        <ul className="list-disc list-inside">
+          {contas.map((conta) => (
+            <li key={conta.id}>
+              <strong>{conta.tipo}</strong>: Saldo R$ {conta.saldo.toLocaleString()} | Limite R$ {conta.limiteCredito.toLocaleString()} | Crédito Disponível R$ {conta.creditoDisponivel.toLocaleString()}
+            </li>
+          ))}
+        </ul>
+      )}
 
-            {agencia && (
-                <div className="bg-white shadow rounded-lg overflow-hidden">
-                    <div className="px-6 py-5 border-b border-gray-200">
-                        <h2 className="text-lg font-medium text-gray-900">Informações da Agência</h2>
-                    </div>
-                    <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <dt className="text-sm font-medium text-gray-500">Código</dt>
-                            <dd className="mt-1 text-sm text-gray-900">{agencia.codigo}</dd>
-                        </div>
-                        <div>
-                            <dt className="text-sm font-medium text-gray-500">Nome</dt>
-                            <dd className="mt-1 text-sm text-gray-900">{agencia.nome}</dd>
-                        </div>
-                        <div className="md:col-span-2">
-                            <dt className="text-sm font-medium text-gray-500">Endereço</dt>
-                            <dd className="mt-1 text-sm text-gray-900">{agencia.endereco}</dd>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {contas && contas.length > 0 && (
-                <div className="bg-white shadow rounded-lg overflow-hidden">
-                    <div className="px-6 py-5 border-b border-gray-200">
-                        <h2 className="text-lg font-medium text-gray-900">Contas Bancárias</h2>
-                    </div>
-                    <div className="px-6 py-5">
-                        <div className="grid grid-cols-1 gap-6">
-                            {contas.map((conta) => (
-                                <div key={conta.id} className="border rounded-lg p-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                        <div>
-                                            <dt className="text-sm font-medium text-gray-500">Tipo de Conta</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 capitalize">{conta.tipo}</dd>
-                                        </div>
-                                        <div>
-                                            <dt className="text-sm font-medium text-gray-500">Saldo</dt>
-                                            <dd className="mt-1 text-sm text-gray-900">{formatCurrency(conta.saldo)}</dd>
-                                        </div>
-                                        <div>
-                                            <dt className="text-sm font-medium text-gray-500">Limite de Crédito</dt>
-                                            <dd className="mt-1 text-sm text-gray-900">{formatCurrency(conta.limiteCredito)}</dd>
-                                        </div>
-                                        <div>
-                                            <dt className="text-sm font-medium text-gray-500">Crédito Disponível</dt>
-                                            <dd className="mt-1 text-sm text-gray-900">{formatCurrency(conta.creditoDisponivel)}</dd>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
+      <h2 className="text-xl font-bold mt-6 mb-2">Agência</h2>
+      {agencia ? (
+        <div>
+          <p><strong>Nome:</strong> {agencia.nome}</p>
+          <p><strong>Endereço:</strong> {agencia.endereco}</p>
         </div>
-    );
-}
+      ) : (
+        <p>Agência não encontrada.</p>
+      )}
+
+      <div className="mt-4">
+        <Link to="/" className="text-blue-600 underline">← Voltar para lista</Link>
+      </div>
+    </div>
+  );
+};
+
+export default ClienteDetalhes;
