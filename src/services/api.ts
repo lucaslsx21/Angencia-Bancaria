@@ -1,6 +1,7 @@
 import Papa from 'papaparse';
 import { Cliente, Conta, Agencia } from "../types";
 
+// Função genérica para buscar e transformar dados de um arquivo CSV
 const clientesUrl =
   "https://docs.google.com/spreadsheets/d/1PBN_HQOi5ZpKDd63mouxttFvvCwtmY97Tb5if5_cdBA/gviz/tq?tqx=out:csv&sheet=clientes";
 const contasUrl =
@@ -14,7 +15,7 @@ async function fetchCSV<T>(
 ): Promise<T[]> {
   const response = await fetch(url);
   const text = await response.text();
-
+  // Retorna uma Promise que usa o PapaParse para transformar os dados do CSV
   return new Promise((resolve, reject) => {
     Papa.parse<Record<string, string>>(text, {
       header: true,
@@ -27,6 +28,7 @@ async function fetchCSV<T>(
   });
 }
 
+// Função para buscar e transformar dados dos clientes
 export async function getClientes(): Promise<Cliente[]> {
   return fetchCSV<Cliente>(clientesUrl, (item) => ({
     id: item.id,
@@ -44,6 +46,7 @@ export async function getClientes(): Promise<Cliente[]> {
   }));
 }
 
+// Função para buscar e transformar dados das contas bancárias
 export async function getContas(): Promise<Conta[]> {
   return fetchCSV<Conta>(contasUrl, (item) => ({
     id: item.id,
@@ -55,6 +58,7 @@ export async function getContas(): Promise<Conta[]> {
   }));
 }
 
+// Função para buscar e transformar dados das agências bancárias
 export async function getAgencias(): Promise<Agencia[]> {
   return fetchCSV<Agencia>(agenciasUrl, (item) => ({
     id: item.id,
